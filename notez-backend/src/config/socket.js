@@ -32,7 +32,8 @@ class SocketManager {
           return next(new Error('Authentication token required'));
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const config = require('./index');
+        const decoded = jwt.verify(token, config.jwt.secret);
         const user = await User.findById(decoded.id).select('-password');
         
         if (!user || !user.isActive) {

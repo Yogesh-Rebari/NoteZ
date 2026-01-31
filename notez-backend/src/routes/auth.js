@@ -2,6 +2,7 @@ const express = require('express');
 const authController = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { validateAuth } = require('../middleware/validation');
+const checkDatabase = require('../middleware/checkDatabase');
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ const router = express.Router();
  * @access  Public
  */
 router.post('/register',
+  checkDatabase,
   validateAuth.register,
   authController.register
 );
@@ -21,6 +23,7 @@ router.post('/register',
  * @access  Public
  */
 router.post('/login',
+  checkDatabase,
   validateAuth.login,
   authController.login
 );

@@ -9,9 +9,12 @@ const { AppError } = require('../utils/helpers');
  */
 class AIService {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
+    // Initialize OpenAI client only if API key is provided
+    if (process.env.OPENAI_API_KEY) {
+      this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    } else {
+      this.openai = null; // AI disabled in this environment
+    }
     
     this.personalities = {
       helpful: {
@@ -33,11 +36,28 @@ class AIService {
     };
   }
 
+  // Ensure AI is available before making requests
+  ensureAvailable() {
+    const { AppError } = require('../utils/helpers');
+    if (!this.openai) {
+      throw new AppError('AI features are disabled. Set OPENAI_API_KEY to enable them.', 503);
+    }
+  }
+
   /**
    * Generate AI response for chat
    */
   async generateChatResponse(userMessage, context = {}) {
     try {
+      this.ensureAvailable();
+      // Sanitize user input
+      const { sanitizeInput } = require('../utils/helpers');
+      const sanitizedMessage = sanitizeInput(userMessage);
+      
+      if (!sanitizedMessage || sanitizedMessage.trim().length === 0) {
+        throw new AppError('Message cannot be empty', 400);
+      }
+      
       const { userId, groupId, personality = 'helpful', studyMode = false } = context;
       
       // Get group context if available
@@ -82,7 +102,7 @@ class AIService {
         model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
+          { role: "user", content: sanitizedMessage }
         ],
         temperature: personalityConfig.temperature,
         max_tokens: 500
@@ -105,11 +125,17 @@ class AIService {
    */
   async generateNoteSummary(noteId) {
     try {
+      this.ensureAvailable();
       const note = await Note.findById(noteId);
       if (!note) {
         throw new AppError('Note not found', 404);
       }
 
+      // Sanitize note content before sending to AI
+      const { sanitizeInput } = require('../utils/helpers');
+      const sanitizedTitle = sanitizeInput(note.title);
+      const sanitizedContent = sanitizeInput(note.content);
+      
       const response = await this.openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
@@ -119,7 +145,7 @@ class AIService {
           },
           {
             role: "user",
-            content: `Please summarize this note:\n\nTitle: ${note.title}\n\nContent: ${note.content}`
+            content: `Please summarize this note:\n\nTitle: ${sanitizedTitle}\n\nContent: ${sanitizedContent.substring(0, 5000)}` // Limit content length
           }
         ],
         temperature: 0.5,
@@ -148,6 +174,7 @@ class AIService {
    */
   async generateQuizQuestions(noteId, difficulty = 'medium', count = 5) {
     try {
+      this.ensureAvailable();
       const note = await Note.findById(noteId);
       if (!note) {
         throw new AppError('Note not found', 404);
@@ -218,6 +245,7 @@ class AIService {
    */
   async extractKeywords(noteId) {
     try {
+      this.ensureAvailable();
       const note = await Note.findById(noteId);
       if (!note) {
         throw new AppError('Note not found', 404);
@@ -264,6 +292,7 @@ class AIService {
    */
   async analyzeSentiment(noteId) {
     try {
+      this.ensureAvailable();
       const note = await Note.findById(noteId);
       if (!note) {
         throw new AppError('Note not found', 404);
@@ -309,6 +338,7 @@ class AIService {
    */
   async generateStudySuggestions(groupId, userId) {
     try {
+      this.ensureAvailable();
       const group = await Group.findById(groupId);
       if (!group) {
         throw new AppError('Group not found', 404);
@@ -371,6 +401,7 @@ class AIService {
    */
   async generateNoteImprovements(noteId) {
     try {
+      this.ensureAvailable();
       const note = await Note.findById(noteId);
       if (!note) {
         throw new AppError('Note not found', 404);

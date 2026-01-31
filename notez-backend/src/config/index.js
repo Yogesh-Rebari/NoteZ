@@ -22,7 +22,7 @@ const config = {
 
   // JWT configuration
   jwt: {
-    secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+    secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d'
   },
@@ -96,8 +96,22 @@ const validateConfig = () => {
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
-    console.error('Missing required environment variables:', missing.join(', '));
+    console.error('❌ Missing required environment variables:', missing.join(', '));
+    console.error('💡 Please create a .env file in notez-backend/ directory with required variables.');
+    console.error('💡 See .env.example for reference.');
     process.exit(1);
+  }
+
+  // Validate JWT secret strength in production
+  if (config.env === 'production' && config.jwt.secret) {
+    if (config.jwt.secret.length < 32) {
+      console.error('❌ JWT_SECRET must be at least 32 characters long in production');
+      process.exit(1);
+    }
+    if (config.jwt.secret === 'your-super-secret-jwt-key-change-in-production') {
+      console.error('❌ Please change the default JWT_SECRET in production');
+      process.exit(1);
+    }
   }
 };
 

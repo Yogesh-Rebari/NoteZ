@@ -99,6 +99,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  passwordChangedAt: {
+    type: Date,
+    default: Date.now
+  },
   
   // AI Chatbot Settings
   aiSettings: {
@@ -156,6 +160,9 @@ userSchema.pre('save', async function(next) {
   // Only hash password if it's been modified
   if (!this.isModified('password')) return next();
   
+  // Update passwordChangedAt timestamp
+  this.passwordChangedAt = new Date();
+  
   try {
     // Hash password with cost of 12
     const salt = await bcrypt.genSalt(12);
@@ -176,6 +183,19 @@ userSchema.methods.updateLastActive = function() {
   this.lastActive = new Date();
   this.loginCount += 1;
   return this.save({ validateBeforeSave: false });
+};
+
+// Instance method to check if password was changed after JWT was issued
+userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+    return JWTTimestamp < changedTimestamp;
+  }
+  // False means NOT changed
+  return false;
 };
 
 // Instance method to get public profile

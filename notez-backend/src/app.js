@@ -10,12 +10,13 @@ const { Server } = require('socket.io');
 
 // Import configurations
 require('dotenv').config();
+// Import database config FIRST to set mongoose options before models load
 const connectDB = require('./config/database');
 const config = require('./config');
 
 // Import middleware
-const { handleApiError } = require('./utils/helpers');
 const errorHandler = require('./middleware/errorHandler');
+const requestIdMiddleware = require('./middleware/requestId');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -58,6 +59,13 @@ class NoteZApp {
    * Setup middleware
    */
   setupMiddleware() {
+    // Request ID middleware (must be first)
+    this.app.use(requestIdMiddleware);
+    
+    // Request timeout (30 seconds)
+    const timeout = require('./middleware/timeout');
+    this.app.use(timeout(30000));
+    
     // Security middleware
     this.app.use(helmet({
       contentSecurityPolicy: {
@@ -93,11 +101,15 @@ class NoteZApp {
     // Compression middleware
     this.app.use(compression());
 
-    // Logging middleware
+    // Logging middleware with request ID
+    const logger = require('./utils/logger');
+    morgan.token('request-id', (req) => req.id || '-');
+    morgan.token('user-id', (req) => req.user?.id || '-');
+    
     if (config.env === 'development') {
-      this.app.use(morgan('dev'));
+      this.app.use(morgan(':method :url :status :response-time ms - :request-id - :user-id'));
     } else {
-      this.app.use(morgan('combined'));
+      this.app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" - :request-id'));
     }
 
     // Data sanitization against NoSQL query injection
@@ -115,13 +127,40 @@ class NoteZApp {
    */
   setupRoutes() {
     // Health check endpoint
-    this.app.get('/health', (req, res) => {
-      res.status(200).json({
+    this.app.get('/health', async (req, res) => {
+      const healthCheck = {
         status: 'success',
         message: 'NoteZ API is running',
         timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version || '1.0.0'
-      });
+        version: process.env.npm_package_version || '1.0.0',
+        uptime: process.uptime(),
+        environment: config.env
+      };
+
+      // Check database connection
+      try {
+        const dbStatus = connectDB.getStatus();
+        healthCheck.database = {
+          connected: dbStatus.connected,
+          host: dbStatus.host || 'unknown'
+        };
+      } catch (error) {
+        healthCheck.database = {
+          connected: false,
+          error: 'Unable to check database status'
+        };
+      }
+
+      // Check memory usage
+      const memoryUsage = process.memoryUsage();
+      healthCheck.memory = {
+        used: Math.round(memoryUsage.heapUsed / 1024 / 1024) + ' MB',
+        total: Math.round(memoryUsage.heapTotal / 1024 / 1024) + ' MB',
+        rss: Math.round(memoryUsage.rss / 1024 / 1024) + ' MB'
+      };
+
+      const statusCode = healthCheck.database.connected ? 200 : 503;
+      res.status(statusCode).json(healthCheck);
     });
 
     // API routes
@@ -134,6 +173,25 @@ class NoteZApp {
     this.app.use('/api/notifications', notificationRoutes);
     this.app.use('/api/uploads', uploadRoutes);
 
+    // API root - friendly response to avoid generic 404 for '/api'
+    this.app.get('/api', (req, res) => {
+      res.json({
+        status: 'success',
+        message: 'NoteZ API root. See available endpoints.',
+        endpoints: [
+          '/api/auth',
+          '/api/users',
+          '/api/groups',
+          '/api/notes',
+          '/api/chat',
+          '/api/ai',
+          '/api/notifications',
+          '/api/uploads',
+          '/health'
+        ]
+      });
+    });
+
     // 404 handler
     this.app.all('*', (req, res, next) => {
       next(new Error(`Can't find ${req.originalUrl} on this server!`));
@@ -144,7 +202,7 @@ class NoteZApp {
    * Setup error handling
    */
   setupErrorHandling() {
-    this.app.use(handleApiError);
+    // Remove duplicate error handler - errorHandler middleware handles all errors
     this.app.use(errorHandler);
   }
 
@@ -155,13 +213,23 @@ class NoteZApp {
     const gracefulShutdown = (signal) => {
       console.log(`\n${signal} received. Starting graceful shutdown...`);
       
+      // Close socket.io connections
+      if (this.io) {
+        this.io.close(() => {
+          console.log('Socket.io server closed.');
+        });
+      }
+      
       this.server.close(() => {
         console.log('HTTP server closed.');
         
         // Close database connection
-        connectDB.close(() => {
+        connectDB.close().then(() => {
           console.log('Database connection closed.');
           process.exit(0);
+        }).catch((err) => {
+          console.error('Error closing database:', err);
+          process.exit(1);
         });
       });
 
@@ -181,9 +249,17 @@ class NoteZApp {
    */
   async start() {
     try {
-      // Connect to database
-      await connectDB.connect();
-      console.log('✅ Database connected successfully');
+      // Validate configuration
+      config.validateConfig();
+      
+      // Connect to database (non-blocking for development)
+      try {
+        await connectDB.connect();
+        console.log('✅ Database connected successfully');
+      } catch (dbError) {
+        console.error('⚠️  Database connection failed, but server will continue...');
+        console.error('   Some features may not work until database is connected.');
+      }
 
       // Start server
       this.server.listen(config.server.port, () => {

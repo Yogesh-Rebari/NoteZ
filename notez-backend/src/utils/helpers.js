@@ -197,49 +197,12 @@ const formatPaginationResponse = (data, page, limit, total) => {
 };
 
 /**
- * Handle API errors
+ * Handle API errors (deprecated - use errorHandler middleware instead)
+ * @deprecated Use errorHandler middleware from middleware/errorHandler.js
  */
 const handleApiError = (error, req, res, next) => {
-  let err = { ...error };
-  err.message = error.message;
-
-  // Mongoose bad ObjectId
-  if (error.name === 'CastError') {
-    const message = 'Resource not found';
-    err = new AppError(message, 404);
-  }
-
-  // Mongoose duplicate key
-  if (error.code === 11000) {
-    const value = error.errmsg.match(/(["'])(\\?.)*?\1/)[0];
-    const message = `Duplicate field value: ${value}. Please use another value!`;
-    err = new AppError(message, 400);
-  }
-
-  // Mongoose validation error
-  if (error.name === 'ValidationError') {
-    const errors = Object.values(error.errors).map(el => el.message);
-    const message = `Invalid input data. ${errors.join('. ')}`;
-    err = new AppError(message, 400);
-  }
-
-  // JWT errors
-  if (error.name === 'JsonWebTokenError') {
-    const message = 'Invalid token. Please log in again!';
-    err = new AppError(message, 401);
-  }
-
-  if (error.name === 'TokenExpiredError') {
-    const message = 'Your token has expired! Please log in again.';
-    err = new AppError(message, 401);
-  }
-
-  res.status(err.statusCode || 500).json({
-    status: err.status || 'error',
-    message: err.message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-    ...(err.details && { details: err.details })
-  });
+  // Delegate to errorHandler middleware
+  next(error);
 };
 
 /**

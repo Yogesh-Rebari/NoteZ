@@ -1,4 +1,5 @@
 const { AppError } = require('../utils/helpers');
+const logger = require('../utils/logger');
 
 /**
  * Global error handling middleware
@@ -7,8 +8,13 @@ const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // Log error
-  console.error('Error:', err);
+  // Log error with request context
+  logger.error('Request error', err, {
+    method: req.method,
+    url: req.originalUrl || req.url,
+    ip: req.ip || req.connection.remoteAddress,
+    userId: req.user?.id
+  });
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
@@ -18,8 +24,9 @@ const errorHandler = (err, req, res, next) => {
 
   // Mongoose duplicate key
   if (err.code === 11000) {
-    const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
-    const message = `Duplicate field value: ${value}. Please use another value!`;
+    // Extract field name from error
+    const field = Object.keys(err.keyPattern || {})[0] || 'field';
+    const message = `${field} already exists. Please use another value!`;
     error = new AppError(message, 400);
   }
 

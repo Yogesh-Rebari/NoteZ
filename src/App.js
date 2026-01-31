@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import { SocketProvider } from './contexts/SocketContext';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { ToastContainer } from './components/common/Toast';
 import { useToast } from './hooks/useToast';
 import MainLayout from './components/Layout/MainLayout';
@@ -22,11 +23,12 @@ import './App.css';
 function App() {
   const { toasts, removeToast } = useToast();
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <Router>
-          <div className="App">
-            <Routes>
+    <ErrorBoundary>
+      <AuthProvider>
+        <SocketProvider>
+          <Router>
+            <div className="App">
+              <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -64,11 +66,12 @@ function App() {
             {/* Redirect to home for unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-            <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
-          </div>
-        </Router>
-      </SocketProvider>
-    </AuthProvider>
+              <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
+            </div>
+          </Router>
+        </SocketProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
