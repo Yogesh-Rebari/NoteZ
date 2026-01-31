@@ -3,7 +3,7 @@
 // - Injects Authorization header when token is provided
 // - No localStorage usage; token is provided by AuthContext at runtime
 
-const DEFAULT_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const DEFAULT_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 let authToken = null;
 

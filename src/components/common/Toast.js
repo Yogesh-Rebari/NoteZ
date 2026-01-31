@@ -21,21 +21,25 @@ const Toast = ({
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    if (duration > 0) {
-      const timer = setTimeout(() => {
-        handleClose();
-      }, duration);
-      return () => clearTimeout(timer);
-    }
-  }, [duration]);
-
-  const handleClose = () => {
+  const closeToast = React.useCallback(() => {
     setIsLeaving(true);
     setTimeout(() => {
       onClose(id);
     }, 300);
-  };
+  }, [id, onClose]);
+
+  const handleClose = React.useCallback(() => {
+    closeToast();
+  }, [closeToast]);
+
+  useEffect(() => {
+    if (duration > 0) {
+      const timer = setTimeout(() => {
+        closeToast();
+      }, duration);
+      return () => clearTimeout(timer);
+    }
+  }, [duration, closeToast]);
 
   const getIcon = () => {
     switch (type) {

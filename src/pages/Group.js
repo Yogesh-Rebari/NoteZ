@@ -10,28 +10,26 @@ import Badge from '../components/common/Badge';
 function Group() {
   const { groupId } = useParams();
   const navigate = useNavigate();
-  const { error, success } = useToast();
+  const { error } = useToast();
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
 
-  const fetchGroup = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/groups/${groupId}`);
-      setGroup(res.data.group);
-    } catch (e) {
-      error(e.message || 'Failed to load group');
-      navigate('/');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchGroup = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get(`/groups/${groupId}`);
+        setGroup(res.data.group);
+      } catch (e) {
+        error(e.message || 'Failed to load group');
+        navigate('/');
+      } finally {
+        setLoading(false);
+      }
+    };
     if (groupId) fetchGroup();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId]);
+  }, [groupId, error, navigate]);
 
   if (loading) return <div className="flex-1 flex items-center justify-center"><LoadingSpinner /></div>;
   if (!group) return null;

@@ -82,7 +82,7 @@ const ChatInterface = ({ groupId, groupName, isOpen, onClose }) => {
       socket.emit('leave_group', { groupId });
       socket.disconnect();
     };
-  }, [groupId, isOpen, success]);
+  }, [groupId, isOpen, success, token]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();

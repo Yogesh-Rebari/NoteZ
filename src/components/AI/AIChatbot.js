@@ -11,8 +11,8 @@ import Badge from '../common/Badge';
  * AI Chatbot component for study assistance
  */
 const AIChatbot = ({ groupId, isOpen, onClose }) => {
-  const { user, token } = useAuth();
-  const { success, error } = useToast();
+  const { user } = useAuth();
+  const { error } = useToast();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);

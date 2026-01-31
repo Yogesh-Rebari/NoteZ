@@ -4,12 +4,11 @@ import { api } from '../utils/api';
 import { useToast } from '../hooks/useToast';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Input from '../components/common/Input';
-import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
 
 function Notes() {
   const { error } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const groupId = searchParams.get('group');
 
   const [notes, setNotes] = useState([]);
@@ -19,33 +18,32 @@ function Notes() {
 
   const debouncedQuery = useMemo(() => query, [query]);
 
-  const fetchNotes = async () => {
-    if (!groupId) return;
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (debouncedQuery) params.set('q', debouncedQuery);
-      if (filters.category) params.set('category', filters.category);
-      if (filters.author) params.set('author', filters.author);
-      if (filters.tags) params.set('tags', filters.tags);
-
-      const url = debouncedQuery
-        ? `/notes/groups/${groupId}/search?${params.toString()}`
-        : `/notes/groups/${groupId}?${params.toString()}`;
-
-      const res = await api.get(url);
-      setNotes(res.data.notes || []);
-    } catch (e) {
-      error(e.message || 'Failed to load notes');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
+    const fetchNotes = async () => {
+      if (!groupId) return;
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (debouncedQuery) params.set('q', debouncedQuery);
+        if (filters.category) params.set('category', filters.category);
+        if (filters.author) params.set('author', filters.author);
+        if (filters.tags) params.set('tags', filters.tags);
+
+        const url = debouncedQuery
+          ? `/notes/groups/${groupId}/search?${params.toString()}`
+          : `/notes/groups/${groupId}?${params.toString()}`;
+
+        const res = await api.get(url);
+        setNotes(res.data.notes || []);
+      } catch (e) {
+        error(e.message || 'Failed to load notes');
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchNotes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, debouncedQuery, filters.category, filters.author, filters.tags]);
+  }, [groupId, debouncedQuery, filters.category, filters.author, filters.tags, error]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;

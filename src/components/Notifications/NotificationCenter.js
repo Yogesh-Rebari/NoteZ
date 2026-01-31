@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, Archive, Trash2, MoreVertical, X } from 'lucide-react';
+import { Bell, Check, Trash2, X, Archive, MoreVertical } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../utils/api';
 import { useToast } from '../../hooks/useToast';
@@ -11,20 +11,13 @@ import Modal from '../common/Modal';
  * Notification Center component
  */
 const NotificationCenter = ({ isOpen, onClose }) => {
-  const { user, token } = useAuth();
   const { success, error } = useToast();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all'); // all, unread, read
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-    }
-  }, [isOpen]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = React.useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.get('/notifications');
@@ -35,7 +28,13 @@ const NotificationCenter = ({ isOpen, onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [error]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchNotifications();
+    }
+  }, [isOpen, fetchNotifications]);
 
   const markAsRead = async (notificationId) => {
     try {

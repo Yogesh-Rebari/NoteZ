@@ -27,33 +27,42 @@ function App() {
         <Router>
           <div className="App">
             <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              {/* Protected routes */}
-              <Route path="/" element={
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            {/* Protected routes */}
+            <Route
+              path="/"
+              element={
                 <ProtectedRoute>
                   <MainLayout>
                     <Home />
                   </MainLayout>
                 </ProtectedRoute>
-              } />
-              <Route path="/group/:groupId" element={
+              }
+            />
+            <Route
+              path="/group/:groupId"
+              element={
                 <ProtectedRoute>
                   <MainLayout>
                     <Group />
                   </MainLayout>
                 </ProtectedRoute>
-              } />
-              <Route path="/notes" element={
+              }
+            />
+            <Route
+              path="/notes"
+              element={
                 <ProtectedRoute>
                   <MainLayout>
                     <Notes />
                   </MainLayout>
                 </ProtectedRoute>
-              } />
-              {/* Redirect to home for unknown routes */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              }
+            />
+            {/* Redirect to home for unknown routes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
           </div>
